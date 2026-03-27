@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>대기오염 발생 정보 대시보드</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dom-to-image/2.6.0/dom-to-image.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-8BS2GGN1SZ"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+
+        gtag('config', 'G-8BS2GGN1SZ');
+    </script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        header {
+            padding: 10px;
+            background-color: #f2f2f2;
+            display: flex;
+            position: relative;
+            align-items: center;
+        }
+
+        .header-content {
+            display: flex;
+            align-items: center;
+            /* 수직 가운데 정렬 */
+            justify-content: flex-start;
+            /* 로고와 텍스트를 왼쪽에서부터 배치 */
+            width: 100%;
+            position: relative;
+        }
+
+        .header-text {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            /* 로고와 텍스트를 왼쪽에서부터 배치 */
+        }
+
+        .logo-container {
+            display: flex;
+            gap: 10px;
+            /* 로고 사이의 간격 */
+            align-items: center;
+            /* 로고의 수직 가운데 정렬 */
+        }
+
+        .logo {
+            width: 120px;
+            /* 로고의 고정된 가로 길이 */
+            height: auto;
+            /* 비율을 유지하여 크기 조정 */
+        }
+
+        .header-text {
+            display: flex;
+            /* 수평 정렬을 위한 Flexbox */
+            justify-content: space-between;
+            /* 제목과 업데이트 날짜를 양 끝으로 배치 */
+            align-items: center;
+            /* 수직 가운데 정렬 */
+            font-size: 24px;
+            /* 기존 제목 크기 유지 */
+            font-weight: bold;
+            /* 기존 제목 스타일 유지 */
+            margin-left: 6rem;
+        }
+
+        .update-date {
+            font-size: 14px;
+            /* 업데이트 날짜 텍스트 크기 */
+            color: #555;
+            /* 업데이트 날짜 색상 */
+            font-weight: normal;
+            /* 일반 텍스트로 표시 */
+            margin-left: 2rem;
+            /* 제목과 날짜 사이의 공간 확보 */
+            text-align: right;
+            /* 오른쪽 정렬 */
+        }
+
+        footer {
+            background-color: #333;
+            color: white;
+            text-align: center;
+            padding: 10px 0;
+            position: relative;
+            bottom: 0;
+            width: 100%;
+        }
+
+        .footer-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .footer-links a {
+            color: #ddd;
+            text-decoration: none;
+            margin: 0 5px;
+        }
+
+        .footer-links a:hover {
+            color: white;
+        }
+
+        .footer-text {
+            margin-top: 10px;
+            font-size: 0.8em;
+        }
+
+        .footer-contact {
+            margin-top: 10px;
+            font-size: 0.9em;
+        }
+
+        .footer-contact a {
+            color: #ddd;
+            text-decoration: none;
+        }
+
+        .footer-contact a:hover {
+            color: white;
+        }
+
+        #container {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 20px;
+            margin: 20px;
+            padding-top: 10px;
+            box-sizing: border-box;
+        }
+
+        #map {
+            flex-grow: 1;
+            width: 65%;
+            height: 80vh;
+            position: relative;
+            box-sizing: border-box;
+            margin: 0 auto;
+            display: block;
+            /* 중앙 정렬을 위해 block 요소로 변경 */
+        }
+
+        #map iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        #filter-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 20px;
+            background-color: #f9f9f9;
+            border-bottom: 1px solid #ddd;
+            box-sizing: border-box;
+        }
+
+        #filter-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .filter-group label {
+            white-space: nowrap;
+            /* 줄바꿈 방지 */
+            margin-right: 5px;
+            /* 필드와 간격 조정 */
+            color: #555;
+            /* 기존 스타일 유지 */
+        }
+
+        .button-group {
+            margin-left: auto;
+            display: flex;
+            gap: 10px;
+        }
+
+        #info-graph-container {
+            width: 75%;
+            /* 인포와 그래프 영역이 차지할 너비 */
+            display: flex;
+            flex-direction: column;
+            /* 수직 정렬 */
+            gap: 20px;
+            /* 인포와 그래프 간격 */
+        }
+
+        /* 그래프 컨테이너 */
+        #graph-container {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            padding: 10px;
+        }
+
+        #graph-container img {
+            width: 100%;
+            height: auto;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        #filter-container h3 {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        #filter-container form {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        #filter-container select {
+            padding: 8px;
+            font-size: 12px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background-color: #fff;
+            width: 100%;
+            /* select 요소는 100% 너비 */
+        }
+
+        #filter-container input[type="date"] {
+            padding: 8px;
+            font-size: 12px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background-color: #fff;
+            width: 90%;
+            /* date 요소는 미세 조정된 너비 */
+        }
+
+        #apply-filters {
+            grid-column: 1 / -1;
+            padding: 10px;
+            cursor: pointer;
+        }
+
+        /* 정보 표시 컨테이너 */
+        #info-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            margin-left: 10px;
+        }
+
+        #ai-summary {
+            text-align: center;
+            font-size: 14px;
+        }
+
+        #ai-summary h3 {
+            margin: 0;
+            font-size: 16px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        #ai-summary p {
+            margin: 5px 0;
+            font-size: 14px;
+            font-weight: normal;
+            color: #555;
+        }
+
+        /* 측정 방법 별 유병률 */
+        #method-summary {
+            display: flex;
+            justify-content: space-between;
+            /* 4개의 구역을 수평 정렬 */
+            gap: 10px;
+        }
+
+        .method-item {
+            flex: 1;
+            /* 모든 항목이 동일한 너비 */
+            text-align: center;
+            font-size: 13px;
+            padding: 5px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+            color: #333;
+        }
+
+        .method-item p {
+            margin: 3px 0;
+            font-size: 12px;
+        }
+
+        /* 호버 효과 */
+        .method-item:hover {
+            background-color: #f0f0f0;
+            border-color: #aaa;
+            transform: scale(1.02);
+        }
+
+        /* 선택된 상태 */
+        .method-item.active {
+            background-color: #dbfbff;
+            border-color: #333;
+            color: #00796b;
+            font-weight: bold;
+            transform: scale(1.05);
+            /* 살짝 커지는 효과 */
+        }
+
+        .data-item {
+            margin-bottom: 10px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+
+        .data-item h4 {
+            margin: 0;
+            padding: 0;
+            font-size: 16px;
+        }
+
+        .data-item p {
+            margin: 5px 0 0 0;
+            font-size: 14px;
+        }
+
+        #input-button {
+            margin-top: 10px;
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- 헤더 -->
+    <header>
+        <div class="header-content">
+            <div class="logo-container">
+                <a href="https://www.airkorea.or.kr/web/" target="_blank">
+                    <img src="https://www.airkorea.or.kr/web/2022/images/logo.png" alt="Logo 1" class="logo">
+                </a>
+                <a href="#" target="_blank">
+                    <img src="./predust_logo.png" alt="Predust Logo" class="logo"
+                        style="height: 60px; width: auto; margin-left:15px;">
+                </a>
+            </div>
+            <div class='header-text'>
+                대기오염 대시보드
+                <p class="update-date">24.12.02 updated</p>
+            </div>
+        </div>
+    </header>
+
+    <!-- 필터 섹션 -->
+    <div id="filter-bar">
+        <form id="filter-container" onsubmit="event.preventDefault(); updateMapMarkers();">
+            <div class="filter-group">
+                <label for="start-date">시작 날짜:</label>
+                <input type="date" id="start-date">
+                <label for="end-date">종료 날짜:</label>
+                <input type="date" id="end-date">
+            </div>
+            <div class="filter-group">
+                <label for="measurement-method">대기물질</label>
+                <select id="measurement-method">
+                    <option value="PM10">미세먼지</option>
+                    <option value="PM25">초미세먼지</option>
+                    <option value="O3">오존</option>
+                    <option value="NO2">이산화질소</option>
+                    <option value="CO">일산화탄소</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="region">시/도</label>
+                <select id="region" name="region">
+                    <option value="all">-전체-</option>
+                    <option value="seoul">서울특별시</option>
+                    <option value="busan">부산광역시</option>
+                    <option value="daegu">대구광역시</option>
+                    <option value="incheon">인천광역시</option>
+                    <option value="gwangju">광주광역시</option>
+                    <option value="daejeon">대전광역시</option>
+                    <option value="ulsan">울산광역시</option>
+                    <option value="gyeonggi">경기도</option>
+                    <option value="gangwon">강원특별자치도</option>
+                    <option value="chungbuk">충청북도</option>
+                    <option value="chungnam">충청남도</option>
+                    <option value="jeonbuk">전라북도</option>
+                    <option value="jeonnam">전라남도</option>
+                    <option value="sejong">세종특별자치시</option>
+                    <option value="gyeongbuk">경상북도</option>
+                    <option value="gyeongnam">경상남도</option>
+                    <option value="jeju">제주특별자치도</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="agency">출처 기관</label>
+                <select id="agency">
+                    <option value="airkorea">에어코리아</option>
+                    <option value="me">환경부</option>
+                </select>
+            </div>
+            <!-- 버튼 그룹 -->
+            <div class="button-group">
+                <button id="apply-filters">필터 적용</button>
+                <button id="capture-button">지도 저장</button>
+                <button id="download-button">데이터 다운로드</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- 메인 콘텐츠 -->
+    <div id="container">
+        <div id="info-graph-container">
+            <div id="info-container">
+                <div id="ai-summary">
+                    <h3>실시간 대기정보</h3>
+                    <p><strong>미세먼지:</strong> 80㎍/㎥ 보통 &nbsp;|&nbsp; <strong>초미세먼지:</strong> 52 ㎍/㎥ 나쁨</p>
+                </div>
+                <div id="method-summary">
+                    <div class="method-item" data-method="초미세먼지">
+                        <p><strong>초미세먼지</strong></p>
+                        🙂
+                    </div>
+                    <div class="method-item" data-method="미세먼지">
+                        <p><strong>미세먼지</strong></p>
+                        😀
+                    </div>
+                    <div class="method-item" data-method="오존">
+                        <p><strong>오존</strong></p>
+                        🙂
+                    </div>
+                    <div class="method-item" data-method="이산화질소">
+                        <p><strong>이산화질소</strong></p>
+                        😷
+                    </div>
+                </div>
+            </div>
+
+
+            <!-- 그래프 영역 -->
+            <div id="graph-container">
+                <div id="graph-images">
+                    <img id="graph-image-1"
+                        src="https://www.airkorea.or.kr/web/placeInfo/getImgFile?scrinId=16600&Dx=D0&imageSn=3"
+                        alt="PM Graph" />
+                </div>
+            </div>
+        </div>
+        <!-- 지도 영역 -->
+        <div id="map"></div>
+    </div>
+
+    <!-- 푸터 -->
+    <footer>
+        <div class="footer-content">
+            <div class="footer-contact">
+                한국인공지능 주식회사 &nbsp; &nbsp;aikoreainc@gmaill.com
+            </div>
+            <div class="footer-text">
+                © 2024 All right reserved AI Korea.Inc
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://unpkg.com/leaflet-image/leaflet-image.js"></script>
+
+    <script>
+        // Leaflet Map Initialization
+        var map = L.map('map', {
+            center: [37.2865, 127.3780],
+            zoom: 7
+        });
+
+        // 일반 지도 (OpenStreetMap)
+        var osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        })  // 기본 레이어로 설정
+
+        // 위성 지도 (Esri World Imagery)
+        var satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            attribution: 'Tiles &copy; Esri'
+        });
+
+        // 기본 레이어 설정
+        var baseLayers = {
+            "일반 지도": osmLayer,
+            "위성 지도": satelliteLayer
+        };
+        satelliteLayer.addTo(map);
+
+        L.control.layers(baseLayers).addTo(map);
+
+        // 현재 활성화된 레이어 추적
+        let currentLayer = "satellite";  // 기본 레이어 이름 (일반 지도)
+
+        map.on('baselayerchange', function (e) {
+            if (e.name === "일반 지도") {
+                currentLayer = "osm";
+            } else if (e.name === "위성 지도") {
+                currentLayer = "satellite";
+            }
+            updateMapMarkers();  // 레이어 변경 시 마커 업데이트
+        });
+
+        let markers = []; // Store map markers
+
+        function clearMarkers() {
+            markers.forEach(marker => marker.remove());
+            markers = [];
+            console.log('marker cleared');
+        }
+
+        // 페이지 로드 시에도 시즌 날짜를 업데이트
+        document.addEventListener("DOMContentLoaded", function () {
+            updateSeasonDates();
+        });
+
+        document.getElementById('capture-button').addEventListener('click', function () {
+            domtoimage.toPng(document.getElementById('map'), { bgcolor: '#fff', width: document.getElementById('map').offsetWidth, height: document.getElementById('map').offsetHeight })
+                .then(function (dataUrl) {
+                    // 이미지 로드
+                    const img = new Image();
+                    img.src = dataUrl;
+                    img.onload = function () {
+                        // 캔버스 생성
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+
+                        // 원본 이미지 크기
+                        const originalWidth = img.width;
+                        const originalHeight = img.height;
+
+                        // 잘라낼 크기 계산
+                        const leftCrop = originalWidth * 0.1;  // 좌 10%
+                        const rightCrop = originalWidth * 0.1; // 우 10%
+                        const topCrop = originalHeight * 0.02;   // 상 2%
+                        const bottomCrop = originalHeight * 0.03; // 하 3%
+
+                        const croppedWidth = originalWidth - leftCrop - rightCrop;
+                        const croppedHeight = originalHeight - topCrop - bottomCrop;
+
+                        // 캔버스 크기 설정
+                        canvas.width = croppedWidth;
+                        canvas.height = croppedHeight;
+
+                        // 이미지 자르기
+                        ctx.drawImage(
+                            img,
+                            leftCrop, topCrop, croppedWidth, croppedHeight, // 원본 이미지에서 잘라낼 부분
+                            0, 0, croppedWidth, croppedHeight // 캔버스에 그릴 위치
+                        );
+
+                        // 잘라낸 이미지 데이터 URL 생성
+                        const croppedDataUrl = canvas.toDataURL('image/png');
+
+                        // 다운로드 링크 생성
+                        const link = document.createElement('a');
+                        link.href = croppedDataUrl;
+                        link.download = 'map_capture_cropped.png';
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                    };
+                })
+                .catch(function (error) {
+                    console.error('캡처 실패:', error);
+                });
+        });
+
+        document.addEventListener("DOMContentLoaded", () => {
+            const methodItems = document.querySelectorAll(".method-item");
+
+            // 모든 method-item에 클릭 이벤트 추가
+            methodItems.forEach(item => {
+                item.addEventListener("click", () => {
+                    // 이전 활성 상태 제거
+                    document.querySelectorAll(".method-item").forEach(i => i.classList.remove("active"));
+
+                    // 현재 클릭된 아이템 활성화
+                    item.classList.add("active");
+
+                    // 선택한 method에 대한 그래프 업데이트 로직 추가
+                    const method = item.getAttribute("data-method");
+                    updateGraphs(method);
+                });
+            });
+
+            function updateGraphs(method) {
+                const graphImage1 = document.getElementById("graph-image-1");
+
+                // 이미지 경로 매핑 (측정 방법별 3개의 그래프)
+                const methodToImages = {
+                    "초미세먼지": [
+                        "https://www.airkorea.or.kr/web/placeInfo/getImgFile?scrinId=16600&Dx=D0&imageSn=3",
+                    ],
+                    "미세먼지": [
+                        "https://www.airkorea.or.kr/web/placeInfo/getImgFile?scrinId=16600&Dx=D0&imageSn=1",
+                    ],
+                    "오존": [
+                        "https://www.airkorea.or.kr/web/placeInfo/getImgFile?scrinId=16600&Dx=D0&imageSn=7",
+                    ],
+                    "이산화질소": [
+                        "https://www.airkorea.or.kr/web/placeInfo/getImgFile?scrinId=16600&Dx=D0&imageSn=5",
+                    ]
+                };
+
+                const images = methodToImages[method] || [
+                    "https://www.airkorea.or.kr/web/placeInfo/getImgFile?scrinId=16600&Dx=D0&imageSn=3",
+                ];
+
+                // 그래프 이미지 업데이트
+                graphImage1.src = images[0];
+            }
+        });
+
+        // Dummy functions to prevent JS reference errors
+        function updateMapMarkers() {
+            console.log('updateMapMarkers called (dummy)');
+        }
+        function updateSeasonDates() {
+            console.log('updateSeasonDates called (dummy)');
+        }
+    </script>
+
+</body>
+
+</html>
